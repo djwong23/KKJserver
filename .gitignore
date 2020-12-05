@@ -54,3 +54,5 @@ dkms.conf
 # Other
 .vscode/
 cmake-build-debug/
+/CMakeLists.txt
+/KKJserver
