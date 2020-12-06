@@ -5,7 +5,7 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <pthread.h>
-
+#define MAX 80 
 #define BACKLOG 5
 
 // the argument we will pass to the connection-handler threads
@@ -15,7 +15,8 @@ struct connection {
 	int fd;
 };
 
-void checkMessage();
+char* checkMessage();
+void receiveMessage();
 
 int main(int argc, char **argv)
 {
@@ -102,20 +103,32 @@ int main(int argc, char **argv)
 			perror("accept");
 			continue;
 		}
+		char buff[MAX]; 
+		    int n; 
+		    // infinite loop for chat 
+		    for (;;) { 
+			bzero(buff, MAX); 
 
-		// spin off a worker thread to handle the remote connection
-		error = pthread_create(&tid, NULL, echo, con);
+			// read the message from client and copy it in buffer 
+			read(sfd, buff, sizeof(buff)); 
+			// print buffer which contains the client contents 
+			printf("From client: %s\t To client : ", buff); 
+			bzero(buff, MAX); 
+			n = 0; 
+			// copy server message in the buffer 
+			while ((buff[n++] = getchar()) != '\n') 
+			    ; 
 
-		// if we couldn't spin off the thread, clean up and wait for another connection
-		if (error != 0) {
-			fprintf(stderr, "Unable to create thread: %d\n", error);
-			close(con->fd);
-			free(con);
-			continue;
-		}
+			// and send that buffer to client 
+			write(sfd, buff, sizeof(buff)); 
 
-		// otherwise, detach the thread and wait for the next connection request
-		pthread_detach(tid);
+			// if msg contains "Exit" then server exit and chat ended. 
+			if (strncmp("exit", buff, 4) == 0) { 
+			    printf("Server Exit...\n"); 
+			    break; 
+			} 
+		    } 
+		
 	}
 	// never reach here
 	return 0;
