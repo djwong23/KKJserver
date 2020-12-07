@@ -17,6 +17,7 @@ int main(int argc, char **argv) {
 	char *port = argv[1];
 	struct addrinfo hint, *address_list, *addr;
 	int error, socketFileDesc, connectionFileDesc;
+	socketFileDesc = 0;
 	socklen_t addrlen = 0;
 	struct sockaddr *socketAddress = NULL;
 	char setUpLine[] = "Boo.\n";
@@ -74,6 +75,9 @@ int main(int argc, char **argv) {
 				case 4: {
 					return 0;
 				}
+				default: {
+					return 1;
+				}
 			}
 
 			int nread = read(connectionFileDesc, buff, MAX);
@@ -86,6 +90,8 @@ int main(int argc, char **argv) {
 		}
 	}
 }
+//accepts stage of the joke and the input from client
+//returns "0" on success, error message on failure
 char *checkMessage(int stage, char *message) {
 	return "0";
 }
