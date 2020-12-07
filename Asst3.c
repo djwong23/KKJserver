@@ -1,135 +1,91 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/socket.h>
 #include <netdb.h>
-#include <pthread.h>
-#define MAX 80 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#define MAX 80
 #define BACKLOG 5
 
-// the argument we will pass to the connection-handler threads
-struct connection {
-	struct sockaddr_storage addr;
-	socklen_t addr_len;
-	int fd;
-};
+char *checkMessage(int stage, char *message);
 
-char* checkMessage();
-void receiveMessage();
-
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
 	if (argc != 2) {
 		printf("Usage: %s [port]\n", argv[0]);
 		exit(EXIT_FAILURE);
 	}
 	char *port = argv[1];
 	struct addrinfo hint, *address_list, *addr;
-	struct connection *con;
-	int error, sfd;
-
-	// initialize hints
+	int error, socketFileDesc, connectionFileDesc;
+	socklen_t addrlen = 0;
+	struct sockaddr *socketAddress = NULL;
+	char setUpLine[] = "Boo.\n";
+	char punchLine[] = "Do not cry.\n";
 	memset(&hint, 0, sizeof(struct addrinfo));
 	hint.ai_family = AF_UNSPEC;
 	hint.ai_socktype = SOCK_STREAM;
 	hint.ai_flags = AI_PASSIVE;
-	// setting AI_PASSIVE means that we want to create a listening socket
-
-	// get socket and address info for listening port
-	// - for a listening socket, give NULL as the host name (because the socket is on
-	//   the local host)
 	error = getaddrinfo(NULL, port, &hint, &address_list);
 	if (error != 0) {
 		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(error));
 		return -1;
 	}
-
-	// attempt to create socket
 	for (addr = address_list; addr != NULL; addr = addr->ai_next) {
-		sfd = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
-
-		// if we couldn't create the socket, try the next method
-		if (sfd == -1) {
+		socketFileDesc =
+				socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
+		if (socketFileDesc == -1) {
 			continue;
 		}
-
-		// if we were able to create the socket, try to set it up for
-		// incoming connections;
-		// 
-		// note that this requires two steps:
-		// - bind associates the socket with the specified port on the local host
-		// - listen sets up a queue for incoming connections and allows us to use accept
-		if ((bind(sfd, addr->ai_addr, addr->ai_addrlen) == 0) &&
-				(listen(sfd, BACKLOG) == 0)) {
+		if (bind(socketFileDesc, addr->ai_addr, addr->ai_addrlen) == 0 &&
+			listen(socketFileDesc, BACKLOG) == 0) {
 			break;
 		}
-
-		// unable to set it up, so try the next method
-		close(sfd);
+		close(socketFileDesc);
 	}
-
 	if (addr == NULL) {
-		// we reached the end of result without successfuly binding a socket
 		fprintf(stderr, "Could not bind\n");
 		return -1;
 	}
-
 	freeaddrinfo(address_list);
-
-	// at this point sfd is bound and listening
 	printf("Waiting for connection\n");
 	for (;;) {
-		// create argument struct for child thread
-		con = malloc(sizeof(struct connection));
-		con->addr_len = sizeof(struct sockaddr_storage);
-		// addr_len is a read/write parameter to accept
-		// we set the initial value, saying how much space is available
-		// after the call to accept, this field will contain the actual address length
 
-		// wait for an incoming connection
-		con->fd = accept(sfd, (struct sockaddr *) &con->addr, &con->addr_len);
-		// we provide
-		// sfd - the listening socket
-		// &con->addr - a location to write the address of the remote host
-		// &con->addr_len - a location to write the length of the address
-		//
-		// accept will block until a remote host tries to connect
-		// it returns a new socket that can be used to communicate with the remote
-		// host, and writes the address of the remote hist into the provided location
-
-		// if we got back -1, it means something went wrong
-		if (con->fd == -1) {
+		connectionFileDesc = accept(socketFileDesc, socketAddress, &addrlen);
+		printf("Accepted\n");
+		if (connectionFileDesc == -1) {
 			perror("accept");
 			continue;
 		}
-		char buff[MAX]; 
-		    int n; 
-		    // infinite loop for chat 
-		    for (;;) { 
-			bzero(buff, MAX); 
+		char buff[MAX];
+		//currently reads until CTRL-C given, sends input to checkMessage
+		for (int i = 1; i <= 4; i++) {
+			bzero(buff, MAX);
+			switch (i) {
+				case 1: {
+					char intro[] = "Knock, knock.\n";
+					write(connectionFileDesc, intro, sizeof(intro));
+				} break;
+				case 2: {
+					write(connectionFileDesc, setUpLine, sizeof(setUpLine));
+				} break;
+				case 3: {
+					write(connectionFileDesc, punchLine, sizeof(punchLine));
+				} break;
+				case 4: {
+					return 0;
+				}
+			}
 
-			// read the message from client and copy it in buffer 
-			read(sfd, buff, sizeof(buff)); 
-			// print buffer which contains the client contents 
-			printf("From client: %s\t To client : ", buff); 
-			bzero(buff, MAX); 
-			n = 0; 
-			// copy server message in the buffer 
-			while ((buff[n++] = getchar()) != '\n') 
-			    ; 
-
-			// and send that buffer to client 
-			write(sfd, buff, sizeof(buff)); 
-
-			// if msg contains "Exit" then server exit and chat ended. 
-			if (strncmp("exit", buff, 4) == 0) { 
-			    printf("Server Exit...\n"); 
-			    break; 
-			} 
-		    } 
-		
+			int nread = read(connectionFileDesc, buff, MAX);
+			buff[nread] = '\0';
+			if (nread == 0) {
+				printf("Got EOF\n");
+				return 0;
+			}
+			checkMessage(i, buff);
+		}
 	}
-	// never reach here
-	return 0;
+}
+char *checkMessage(int stage, char *message) {
+	return "0";
 }

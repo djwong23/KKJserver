@@ -56,3 +56,6 @@ dkms.conf
 cmake-build-debug/
 /CMakeLists.txt
 /KKJserver
+/.clang-format
+/testing.c
+/testing
