@@ -93,44 +93,37 @@ int main(int argc, char **argv) {
 //returns "0" on success, error message on failure
 
 char *checkMessage(int stage, char *message, char* setUpLine, char* punchLine, char* adsLine);
-char* findError(int stage, char* message, char* expected);
+char* findError(int stage, char* message, char* expected, int expectedLen);
 int numDigits(int len);
-char* lengthAsString(int len, int addDigits);
+char* lengthAsString(int len);
 
 char *checkMessage(int stage, char *message, char* setUpLine, char* punchLine, char* adsLine) {
-
-	//we need to verify that the line received from client matches what is expected at the stage
-	// 0 = Send Knock, knock
-	// 1 = Get who's there
-	// 2 = send Setup line
-	// 3 = get Question back
-	// 4 = send punch line
-	// 5 = get message of surprise
-	//reset?
-
 	char* expected; 
   int len;
 	switch (stage)
 	{
 	case 0:
+    len = 13;
 		expected = "REG|13|Knock, knock|"; 
 		break;
 	case 1: 
+    len= 12;
 		expected = "REG|12|Who's there?|";
 		break;
   case 2: 
     len = strlen(setUpLine);
-    expected = malloc((3 + 2 + numDigits(len) + len) * sizeof(char));
+    expected = malloc((3 + 3 + numDigits(len) + len) * sizeof(char));
     strcat(expected, "REG|");
-    strcat(expected, lengthAsString(len, 0));
+    strcat(expected, lengthAsString(len));
     strcat(expected, "|");
     strcat(expected, setUpLine);
+    strcat(expected, "|");
     break;
 	case 3: 
-		len = strlen(setUpLine);
-    expected = malloc((3 + 2 + numDigits(len) + len) * sizeof(char));
+		len = strlen(setUpLine)+6;
+    expected = malloc((3 + 3 + numDigits(len) + len) * sizeof(char));
     strcat(expected, "REG|");
-    strcat(expected, lengthAsString(len, 6));
+    strcat(expected, lengthAsString(len));
     strcat(expected, "|");
     strcat(expected, setUpLine);
     strcat(expected, ", who?");
@@ -138,41 +131,99 @@ char *checkMessage(int stage, char *message, char* setUpLine, char* punchLine, c
     break;
   case 4: 
     len = strlen(punchLine);
-    expected = malloc((3 + 2 + numDigits(len) + len) * sizeof(char));
+    expected = malloc((3 + 3 + numDigits(len) + len) * sizeof(char));
     strcat(expected, "REG|");
-    strcat(expected, lengthAsString(len, 0));
+    strcat(expected, lengthAsString(len));
     strcat(expected, "|");
     strcat(expected, punchLine);
     strcat(expected, "|");
     break;
   case 5: 
     len = strlen(adsLine);
-    expected = malloc((3 + 2 + numDigits(len) + len) * sizeof(char));
+    expected = malloc((3 + 3 + numDigits(len) + len) * sizeof(char));
     strcat(expected, "REG|");
-    strcat(expected, lengthAsString(len, 0));
+    strcat(expected, lengthAsString(len));
     strcat(expected, "|");
     strcat(expected, adsLine);
     strcat(expected, "|");
 	default:
 		break;
 	}
-  printf("%s\n", expected);
 
-  if(strcmp(expected, message) != 0) return "error\n";
+  if(strcmp(expected, message) != 0) return findError(stage, message, expected, len);
 	
 	return NULL;
 }
 
 
+char* findError(int stage, char* message, char* expected, int expectedLen){
+  
+  char* err = malloc(5*sizeof(char));
+  err[0] = 'M';
+  err[1] = stage + 48;
+  err[2] = '\0';
+
+
+  if(message[0] != expected[0] || message[1] != expected[1] || message[2] != expected[2] || message[3] != '|') 
+    return strcat(err, "FT");
+
+  int lenJoke = 0; 
+
+  int i = 4;
+  int messageLen = strlen(message);
+  while( i < messageLen){
+    if(message[i] >= 48 && message[i] <= 57){
+      lenJoke = lenJoke* 10 + (message[i]-48);
+    }
+    else if(message[i] == '|'){
+      if(lenJoke == 0)
+        return strcat(err, "FT");
+      else break;
+    }
+    else{
+      return strcat(err, "FT"); 
+    }
+    i++;
+  }
+
+  if(lenJoke != expectedLen) {
+    return strcat(err, "LN");
+  }
+
+  int start = i+1;
+
+  for(i = start; i < start+lenJoke; i++){
+    if(message[i] == '|') return strcat(err, "FT");
+    if(message[i] != expected[i]) return strcat(err, "CT");
+  }
+
+  if(message[i] != '|') return strcat(err, "FT");
+
+  return strcat(err, "FT");
+}
+
+
 // char* findError(int stage, char* message, char* expected){
+
+//first check first three characters - must be REG
+//then check that there is a | 
+//then get length - must equal expected
+//then check that there is a | 
+//then read the content string
+	//if its length is not equal to read length - problem
+	//if its content not equal to expected - error
+//must have
+
+
+
+
 // }
 
 
 
-char* lengthAsString(int len, int addDigits){
-  int digits = numDigits(len+6);
+char* lengthAsString(int len){
+  int digits = numDigits(len);
   char* res = malloc(digits* sizeof(char));
-  len = len+addDigits;
   sprintf(res, "%d", len);
   return res;
 }
