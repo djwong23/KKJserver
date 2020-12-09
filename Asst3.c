@@ -7,7 +7,6 @@
 #define MAX 80
 #define BACKLOG 5
 
-char *checkMessage(int stage, char *message);
 
 int main(int argc, char **argv) {
 	if (argc != 2) {
@@ -86,12 +85,104 @@ int main(int argc, char **argv) {
 				printf("Got EOF\n");
 				return 0;
 			}
-			checkMessage(i, buff);
+			// checkMessage(i, buff);
 		}
 	}
 }
 //accepts stage of the joke and the input from client
 //returns "0" on success, error message on failure
-char *checkMessage(int stage, char *message) {
-	return "0";
+
+char *checkMessage(int stage, char *message, char* setUpLine, char* punchLine, char* adsLine);
+char* findError(int stage, char* message, char* expected);
+int numDigits(int len);
+char* lengthAsString(int len, int addDigits);
+
+char *checkMessage(int stage, char *message, char* setUpLine, char* punchLine, char* adsLine) {
+
+	//we need to verify that the line received from client matches what is expected at the stage
+	// 0 = Send Knock, knock
+	// 1 = Get who's there
+	// 2 = send Setup line
+	// 3 = get Question back
+	// 4 = send punch line
+	// 5 = get message of surprise
+	//reset?
+
+	char* expected; 
+  int len;
+	switch (stage)
+	{
+	case 0:
+		expected = "REG|13|Knock, knock|"; 
+		break;
+	case 1: 
+		expected = "REG|12|Who's there?|";
+		break;
+  case 2: 
+    len = strlen(setUpLine);
+    expected = malloc((3 + 2 + numDigits(len) + len) * sizeof(char));
+    strcat(expected, "REG|");
+    strcat(expected, lengthAsString(len, 0));
+    strcat(expected, "|");
+    strcat(expected, setUpLine);
+    break;
+	case 3: 
+		len = strlen(setUpLine);
+    expected = malloc((3 + 2 + numDigits(len) + len) * sizeof(char));
+    strcat(expected, "REG|");
+    strcat(expected, lengthAsString(len, 6));
+    strcat(expected, "|");
+    strcat(expected, setUpLine);
+    strcat(expected, ", who?");
+    strcat(expected, "|");
+    break;
+  case 4: 
+    len = strlen(punchLine);
+    expected = malloc((3 + 2 + numDigits(len) + len) * sizeof(char));
+    strcat(expected, "REG|");
+    strcat(expected, lengthAsString(len, 0));
+    strcat(expected, "|");
+    strcat(expected, punchLine);
+    strcat(expected, "|");
+    break;
+  case 5: 
+    len = strlen(adsLine);
+    expected = malloc((3 + 2 + numDigits(len) + len) * sizeof(char));
+    strcat(expected, "REG|");
+    strcat(expected, lengthAsString(len, 0));
+    strcat(expected, "|");
+    strcat(expected, adsLine);
+    strcat(expected, "|");
+	default:
+		break;
+	}
+  printf("%s\n", expected);
+
+  if(strcmp(expected, message) != 0) return "error\n";
+	
+	return NULL;
+}
+
+
+// char* findError(int stage, char* message, char* expected){
+// }
+
+
+
+char* lengthAsString(int len, int addDigits){
+  int digits = numDigits(len+6);
+  char* res = malloc(digits* sizeof(char));
+  len = len+addDigits;
+  sprintf(res, "%d", len);
+  return res;
+}
+
+int numDigits(int len){
+  int res = 0; 
+
+  while(len > 0){
+    res++;
+    len = len/10;
+  }
+  return res;
 }
