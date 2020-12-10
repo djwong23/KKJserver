@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-Wall
+CFLAGS=-Wall -fsanitize=undefined,address -g
 OUTPUTS=KKJserver
 .PHONY: all clean
 

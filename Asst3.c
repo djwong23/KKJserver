@@ -151,13 +151,13 @@ int main(int argc, char **argv) {
 							finished = 1;
 							break;
 						}
-						char *length = malloc((k + 1 + 1) * sizeof(char));
+						char *length = malloc((k + 1) * sizeof(char));
 						if (length == NULL) {
 							printf("Malloc error.\n");
 							return 1;
 						}
-						memcpy(length, &buff[4], k + 1);
-						length[k + 2] = '\0';
+						memcpy(length, &buff[4], k);
+						length[k] = '\0';
 						int intLength;
 						intLength = (int) strtol(length, NULL, 10);
 						printf("THE LENGTH IS %d\n", intLength);
