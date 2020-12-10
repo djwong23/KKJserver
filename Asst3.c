@@ -21,7 +21,7 @@ int main(int argc, char **argv) {
 	//socket setup; socket contained in socketFileDesc
 	char *port = argv[1];
 	struct addrinfo hint, *address_list, *addr;
-	int error, socketFileDesc, connectionFileDesc;
+	int err, socketFileDesc, connectionFileDesc;
 	socketFileDesc = 0;
 	socklen_t addrlen = 0;
 	struct sockaddr *socketAddress = NULL;
@@ -33,9 +33,9 @@ int main(int argc, char **argv) {
 	hint.ai_family = AF_UNSPEC;
 	hint.ai_socktype = SOCK_STREAM;
 	hint.ai_flags = AI_PASSIVE;
-	error = getaddrinfo(NULL, port, &hint, &address_list);
-	if (error != 0) {
-		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(error));
+	err = getaddrinfo(NULL, port, &hint, &address_list);
+	if (err != 0) {
+		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(err));
 		return -1;
 	}
 	for (addr = address_list; addr != NULL; addr = addr->ai_next) {
@@ -125,7 +125,7 @@ int main(int argc, char **argv) {
 						finished = 1;
 						break;
 					}
-					printf("Read in %c\n", buff[4+k]);
+					printf("Read in %c\n", buff[4 + k]);
 					if (!isdigit(buff[4 + k]) && buff[4 + k] != '|') {
 						buff[4 + k + 1] = '\0';
 						printf("%s is the buff\n", buff);
@@ -169,13 +169,12 @@ int main(int argc, char **argv) {
 								return 1;
 							}
 						}
-						int ret = readXBytes(connectionFileDesc, &buff[4 + k + 1], intLength+1) == 1;
+						int ret = readXBytes(connectionFileDesc, &buff[4 + k + 1], intLength + 1) == 1;
 						if (ret == 1) {
 							printf("Early termination.\n");
 							finished = 1;
 							break;
-						}
-						else if (ret == 2) {
+						} else if (ret == 2) {
 							printf("Message length invalid; pipe hit before specified length.\n");
 							char error[4];
 							error[0] = 'M';
@@ -186,8 +185,8 @@ int main(int argc, char **argv) {
 							finished = 1;
 							break;
 						}
-						printf("Read in %.*s as a string\n", intLength+1, &buff[4+k+1]);
-						buff[4+k+1+intLength+2] = '\0';
+						printf("Read in %.*s as a string\n", intLength + 1, &buff[4 + k + 1]);
+						buff[4 + k + 1 + intLength + 2] = '\0';
 						free(length);
 						break;
 					}
@@ -218,9 +217,7 @@ int main(int argc, char **argv) {
 					}
 					k += 1;
 				}
-			}
-			else
-			{
+			} else {
 				printf("Message format broken; %s is the buffer.\n", buff);
 				char error[4];
 				error[0] = 'M';
@@ -231,13 +228,12 @@ int main(int argc, char **argv) {
 				break;
 			}
 
-			if (!finished) { 
+			if (!finished) {
 				printf("Input %s\n", buff);
-				char* e = checkMessage(i, buff, setUpLine, punchLine); 
-				if(e != NULL){
+				char *e = checkMessage(i, buff, setUpLine, punchLine);
+				if (e != NULL) {
 					printf("error found by checkmsg\n");
 					write(connectionFileDesc, e, 4);
-					finished = 1;
 					break;
 				}
 			}
@@ -274,7 +270,7 @@ int readXBytes(int socketFileDesc, char *buff, int x) {
 char *checkMessage(int stage, char *message, char *setUpLine, char *punchLine) {
 	printf("Checking message %s at stage %d\n", message, stage);
 	char *expected;
-	char* temp;
+	char *temp;
 	int len;
 	switch (stage) {
 		case 0:
@@ -286,10 +282,10 @@ char *checkMessage(int stage, char *message, char *setUpLine, char *punchLine) {
 			expected = "REG|12|Who's there?|";
 			break;
 		case 2:
-			len = strlen(setUpLine) + 6-1;
-			temp = malloc(strlen(setUpLine)* sizeof(char));
+			len = strlen(setUpLine) + 6 - 1;
+			temp = malloc(strlen(setUpLine) * sizeof(char));
 			strcpy(temp, setUpLine);
-			temp[strlen(setUpLine)-1]='\0';
+			temp[strlen(setUpLine) - 1] = '\0';
 			expected = malloc((3 + 3 + numDigits(len) + len) * sizeof(char));
 			strcat(expected, "REG|");
 			strcat(expected, lengthAsString(len));
