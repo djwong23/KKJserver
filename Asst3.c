@@ -169,7 +169,7 @@ int main(int argc, char **argv) {
 								return 1;
 							}
 						}
-						int ret = readXBytes(connectionFileDesc, &buff[4 + k + 1], intLength + 1) == 1;
+						int ret = readXBytes(connectionFileDesc, &buff[4 + k + 1], intLength);
 						if (ret == 1) {
 							printf("Early termination.\n");
 							finished = 1;
@@ -182,6 +182,11 @@ int main(int argc, char **argv) {
 							error[2] = 'L';
 							error[3] = 'N';
 							write(connectionFileDesc, error, 4);
+							finished = 1;
+							break;
+						}
+						if (read(connectionFileDesc, &buff[4+k+1+intLength], 1) == 0) {
+							printf("Early termination.\n");
 							finished = 1;
 							break;
 						}
