@@ -78,15 +78,15 @@ int main(int argc, char **argv) {
 			switch (i) {
 				case 1: {
 					char intro[] = "REG|13|Knock, knock.|";
-					write(connectionFileDesc, intro, sizeof(intro));
+					write(connectionFileDesc, intro, strlen(intro));
 					break;
 				}
 				case 2: {
-					write(connectionFileDesc, setUpLineFormat, sizeof(setUpLineFormat));
+					write(connectionFileDesc, setUpLineFormat, strlen(setUpLineFormat));
 					break;
 				}
 				case 3: {
-					write(connectionFileDesc, punchLineFormat, sizeof(punchLineFormat));
+					write(connectionFileDesc, punchLineFormat, strlen(punchLineFormat));
 					break;
 				}
 				case 4: {
@@ -209,13 +209,14 @@ int main(int argc, char **argv) {
 							return 1;
 						}
 					}
-					if (read(connectionFileDesc, &buff[5 + k], 1) == 0) {
+					if (read(connectionFileDesc, &buff[4 + k], 1) == 0) {
 						printf("Early termination of client. \n");
 						finished = 1;
 						break;
 					}
+					printf("Read %c on line 217\n", buff[4+k]);
 					if (buff[4 + k] == '|') {
-						buff[44 + k + 1] = '\0';
+						buff[4 + k + 1] = '\0';
 						printf("Error received by client: '%s'\n", buff);
 						finished = 1;
 						break;
