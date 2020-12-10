@@ -368,6 +368,9 @@ char *findError(int stage, char *message, char *expected, int expectedLen) {
 	if (message[0] != expected[0] || message[1] != expected[1] || message[2] != expected[2] || message[3] != '|')
 		return strcat(err, "FT");
 
+	int mlen = strlen(message);
+	if(message[mlen-1] != '|') return strcat(err, "FT");
+
 	int lenJoke = 0;
 
 	int i = 4;
