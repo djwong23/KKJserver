@@ -70,7 +70,7 @@ int main(int argc, char **argv) {
 			return 1;
 		}
 		int finished = 0;
-		//currently reads until CTRL-C given, sends input to checkMessage
+		//reading & checking all stages of the joke
 		for (int i = 1; i <= 4 && !finished; i++) {
 			bzero(buff, size);
 			switch (i) {
@@ -97,15 +97,18 @@ int main(int argc, char **argv) {
 			}
 
 			//readXBytes repeatedly reads until the bytes requested are read
-			//returns 1 if the bytes requested cannot be read
-			if (readXBytes(connectionFileDesc, buff, 4) == 1) {
+			//returns 1 if the client terminates early
+			//returns 2 if the message encounters a pipe as it's reading
+			if (readXBytes(connectionFileDesc, buff, 3) == 1) {
 				printf("Early termination of client.\n");
 				break;
 			}
+			read(connectionFileDesc, &buff[3], 1);
 			buff[4] = '\0';
 			if (strcmp("REG|", buff) == 0) {
 				int k = 0;
-				//need to read in all digits of the length
+				//need to read in all digits of the length by character, store it in length
+				//then convert length to a usable int
 				while (1) {
 					if (4 + k == size) {
 						size *= 2;
@@ -135,6 +138,17 @@ int main(int argc, char **argv) {
 						break;
 					}
 					if (buff[4 + k] == '|') {
+						if (k == 0) {
+							printf("Message format broken; no length specified.\n");
+							char error[4];
+							error[0] = 'M';
+							error[1] = i + '0';
+							error[2] = 'F';
+							error[3] = 'T';
+							write(connectionFileDesc, error, 4);
+							finished = 1;
+							break;
+						}
 						char *length = malloc((k + 1 + 1) * sizeof(char));
 						if (length == NULL) {
 							printf("Malloc error.\n");
@@ -152,9 +166,22 @@ int main(int argc, char **argv) {
 								return 1;
 							}
 						}
-						if (readXBytes(connectionFileDesc, &buff[4 + k + 1], intLength+1) == 1) {
+						int ret = readXBytes(connectionFileDesc, &buff[4 + k + 1], intLength+1) == 1;
+						if (ret == 1) {
 							printf("Early termination.\n");
 							finished = 1;
+							break;
+						}
+						else if (ret == 2) {
+							printf("Message length invalid; pipe hit before specified length.\n");
+							char error[4];
+							error[0] = 'M';
+							error[1] = i + '0';
+							error[2] = 'L';
+							error[3] = 'N';
+							write(connectionFileDesc, error, 4);
+							finished = 1;
+							break;
 						}
 						printf("Read in %.*s as a string\n", intLength+1, &buff[4+k+1]);
 						buff[4+k+1+intLength+2] = '\0';
@@ -218,6 +245,10 @@ int readXBytes(int socketFileDesc, char *buff, int x) {
 		if (nRead == 0) {
 			printf("EOF reached\n");
 			return 1;
+		}
+		if (c == '|') {
+			printf("Pipe hit. \n");
+			return 2;
 		}
 		printf("%c read in readXBytes \n", c);
 		buff[x - remaining] = c;
