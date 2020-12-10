@@ -109,7 +109,7 @@ int main(int argc, char **argv) {
 			buff[4] = '\0';
 			if (strcmp("REG|", buff) == 0) {
 				int k = 0;
-				//need to read in all digits of the length by character, store it in length
+				//need to read in all digits of the length character by character, store it in length
 				//then convert length to a usable int
 				while (1) {
 					if (4 + k == size) {
@@ -169,6 +169,7 @@ int main(int argc, char **argv) {
 								return 1;
 							}
 						}
+						//now we have the length and should read exactly the length given
 						int ret = readXBytes(connectionFileDesc, &buff[4 + k + 1], intLength);
 						if (ret == 1) {
 							printf("Early termination.\n");
@@ -185,6 +186,7 @@ int main(int argc, char **argv) {
 							finished = 1;
 							break;
 						}
+						//must read 1 more char for the pipe
 						if (read(connectionFileDesc, &buff[4 + k + 1 + intLength], 1) == 0) {
 							printf("Early termination.\n");
 							finished = 1;
