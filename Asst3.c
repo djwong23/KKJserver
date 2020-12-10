@@ -8,7 +8,7 @@
 
 #define BACKLOG 5
 
-char *checkMessage(int stage, char *message, char *setUpLine, char *punchLine, char *adsLine);
+char *checkMessage(int stage, char *message, char *setUpLine, char *punchLine);
 char *findError(int stage, char *message, char *expected, int expectedLen);
 int numDigits(int len);
 char *lengthAsString(int len);
@@ -25,8 +25,10 @@ int main(int argc, char **argv) {
 	socketFileDesc = 0;
 	socklen_t addrlen = 0;
 	struct sockaddr *socketAddress = NULL;
-	char setUpLine[] = "Boo.\n";
-	char punchLine[] = "Do not cry.\n";
+	char setUpLine[] = "Boo.";
+	char setUpLineFormat[] = "REG|4|Boo.|";
+	char punchLine[] = "Do not cry.";
+	char punchLineFormat[] = "REG|11|Do not cry.|";
 	memset(&hint, 0, sizeof(struct addrinfo));
 	hint.ai_family = AF_UNSPEC;
 	hint.ai_socktype = SOCK_STREAM;
@@ -75,16 +77,16 @@ int main(int argc, char **argv) {
 			bzero(buff, size);
 			switch (i) {
 				case 1: {
-					char intro[] = "Knock, knock.\n";
+					char intro[] = "REG|13|Knock, knock.|";
 					write(connectionFileDesc, intro, sizeof(intro));
 					break;
 				}
 				case 2: {
-					write(connectionFileDesc, setUpLine, sizeof(setUpLine));
+					write(connectionFileDesc, setUpLineFormat, sizeof(setUpLineFormat));
 					break;
 				}
 				case 3: {
-					write(connectionFileDesc, punchLine, sizeof(punchLine));
+					write(connectionFileDesc, punchLineFormat, sizeof(punchLineFormat));
 					break;
 				}
 				case 4: {
@@ -144,6 +146,7 @@ int main(int argc, char **argv) {
 						length[k + 2] = '\0';
 						int intLength;
 						intLength = (int) strtol(length, NULL, 10);
+						printf("THE LENGTH IS %d\n", intLength);
 						if (4 + k + intLength >= size) {
 							size *= 2;
 							buff = realloc(buff, size);
@@ -200,9 +203,17 @@ int main(int argc, char **argv) {
 				write(connectionFileDesc, error, 4);
 				break;
 			}
-			char dummy[5] = "hello";
 
-			if (!finished) { checkMessage(i, buff, setUpLine, punchLine, dummy); }
+			if (!finished) { 
+				printf("Input %s\n", buff);
+				char* e = checkMessage(i, buff, setUpLine, punchLine); 
+				if(e != NULL){
+					printf("error found by checkmsg\n");
+					write(connectionFileDesc, e, 4);
+					finished = 1;
+					break;
+				}
+			}
 		}
 
 		close(connectionFileDesc);
@@ -229,9 +240,10 @@ int readXBytes(int socketFileDesc, char *buff, int x) {
 //accepts stage of the joke and the input from client
 //returns "0" on success, error message on failure
 
-char *checkMessage(int stage, char *message, char *setUpLine, char *punchLine, char *adsLine) {
+char *checkMessage(int stage, char *message, char *setUpLine, char *punchLine) {
 	printf("Checking message %s at stage %d\n", message, stage);
 	char *expected;
+	char* temp;
 	int len;
 	switch (stage) {
 		case 0:
@@ -243,22 +255,27 @@ char *checkMessage(int stage, char *message, char *setUpLine, char *punchLine, c
 			expected = "REG|12|Who's there?|";
 			break;
 		case 2:
+			len = strlen(setUpLine) + 6-1;
+			temp = malloc(strlen(setUpLine)* sizeof(char));
+			strcpy(temp, setUpLine);
+			temp[strlen(setUpLine)-1]='\0';
+			expected = malloc((3 + 3 + numDigits(len) + len) * sizeof(char));
+			strcat(expected, "REG|");
+			strcat(expected, lengthAsString(len));
+			strcat(expected, "|");
+			strcat(expected, temp);
+			strcat(expected, ", who?");
+			strcat(expected, "|\0");
+			printf("seting expected to %s\n", expected);
+			free(temp);
+			break;
+		case 3:
 			len = strlen(setUpLine);
 			expected = malloc((3 + 3 + numDigits(len) + len) * sizeof(char));
 			strcat(expected, "REG|");
 			strcat(expected, lengthAsString(len));
 			strcat(expected, "|");
 			strcat(expected, setUpLine);
-			strcat(expected, "|");
-			break;
-		case 3:
-			len = strlen(setUpLine) + 6;
-			expected = malloc((3 + 3 + numDigits(len) + len) * sizeof(char));
-			strcat(expected, "REG|");
-			strcat(expected, lengthAsString(len));
-			strcat(expected, "|");
-			strcat(expected, setUpLine);
-			strcat(expected, ", who?");
 			strcat(expected, "|");
 			break;
 		case 4:
@@ -270,14 +287,6 @@ char *checkMessage(int stage, char *message, char *setUpLine, char *punchLine, c
 			strcat(expected, punchLine);
 			strcat(expected, "|");
 			break;
-		case 5:
-			len = strlen(adsLine);
-			expected = malloc((3 + 3 + numDigits(len) + len) * sizeof(char));
-			strcat(expected, "REG|");
-			strcat(expected, lengthAsString(len));
-			strcat(expected, "|");
-			strcat(expected, adsLine);
-			strcat(expected, "|");
 		default:
 			break;
 	}
@@ -289,7 +298,8 @@ char *checkMessage(int stage, char *message, char *setUpLine, char *punchLine, c
 
 
 char *findError(int stage, char *message, char *expected, int expectedLen) {
-
+	printf("%s %s\n", expected, message);
+	printf("%d\n", expectedLen);
 	char *err = malloc(5 * sizeof(char));
 	err[0] = 'M';
 	err[1] = stage + 48;
