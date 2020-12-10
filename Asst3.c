@@ -73,10 +73,10 @@ int main(int argc, char **argv) {
 		}
 		int finished = 0;
 		//reading & checking all stages of the joke
-		for (int i = 1; i <= 4 && !finished; i++) {
+		for (int i = 0; i <= 6 && !finished; i += 2) {
 			bzero(buff, size);
 			switch (i) {
-				case 1: {
+				case 0: {
 					char intro[] = "REG|13|Knock, knock.|";
 					write(connectionFileDesc, intro, strlen(intro));
 					break;
@@ -85,11 +85,11 @@ int main(int argc, char **argv) {
 					write(connectionFileDesc, setUpLineFormat, strlen(setUpLineFormat));
 					break;
 				}
-				case 3: {
+				case 4: {
 					write(connectionFileDesc, punchLineFormat, strlen(punchLineFormat));
 					break;
 				}
-				case 4: {
+				case 6: {
 					finished = 1;
 					continue;
 				}
@@ -100,7 +100,7 @@ int main(int argc, char **argv) {
 
 			//readXBytes repeatedly reads until the bytes requested are read
 			//returns 1 if the client terminates early
-			//returns 2 if the message encounters a pipe as it's reading
+			//returns 2 if the message encounters a pipe as it's reading (early ending)
 			if (readXBytes(connectionFileDesc, buff, 3) == 1) {
 				printf("Early termination of client.\n");
 				break;
@@ -185,7 +185,7 @@ int main(int argc, char **argv) {
 							finished = 1;
 							break;
 						}
-						if (read(connectionFileDesc, &buff[4+k+1+intLength], 1) == 0) {
+						if (read(connectionFileDesc, &buff[4 + k + 1 + intLength], 1) == 0) {
 							printf("Early termination.\n");
 							finished = 1;
 							break;
@@ -198,31 +198,37 @@ int main(int argc, char **argv) {
 					k += 1;
 				}
 			} else if (strcmp("ERR|", buff) == 0) {
+				printf("Danger!\n");
 				//need to read in all of the error message
-				int k = 0;
-				while (1) {
-					if (4 + k == size) {
-						size *= 2;
-						buff = realloc(buff, size);
-						if (buff == NULL) {
-							printf("Malloc error.\n");
-							return 1;
-						}
-					}
-					if (read(connectionFileDesc, &buff[4 + k], 1) == 0) {
-						printf("Early termination of client. \n");
-						finished = 1;
-						break;
-					}
-					printf("Read %c on line 217\n", buff[4+k]);
-					if (buff[4 + k] == '|') {
-						buff[4 + k + 1] = '\0';
-						printf("Error received by client: '%s'\n", buff);
-						finished = 1;
-						break;
-					}
-					k += 1;
+				char errorCode[6];
+				int ret = readXBytes(connectionFileDesc, errorCode, 4);
+				if (ret == 1) {
+					printf("Early termination by client.\n");
+				} else if (ret == 2) {
+					printf("Malformed error code; code too short.\n");
+				} else if (read(connectionFileDesc, &errorCode[4], 1) == 0) {
+					printf("Early termination of client.\n");
 				}
+				//code is 4 characters and terminated, should be either unrecognized or valid
+				else {
+					errorCode[5] = '\0';
+					printf("Found code!\n");
+					char twoChars[2];
+					memcpy(twoChars, &errorCode[2], 2 * (sizeof(char)));
+					if (errorCode[4] != '|') {
+						printf("Malformed error code; no pipe terminator. \n");
+					} else if (errorCode[0] != 'M' || errorCode[1] != (i + '0') || (strcmp(twoChars, "CT") != 0 && strcmp(twoChars, "LN") != 0 && strcmp(twoChars, "FT"))) {
+						printf("Unrecognized error code.\n");
+					} else {
+						printf("Client sent error message: ERR|");
+						for (int j = 0; j < 5; j++) {
+							printf("%c", errorCode[j]);
+						}
+						printf("\n");
+					}
+				}
+				finished = 1;
+
 			} else {
 				printf("Message format broken; %s is the buffer.\n", buff);
 				char error[4];
@@ -236,7 +242,7 @@ int main(int argc, char **argv) {
 
 			if (!finished) {
 				printf("Input %s\n", buff);
-				char *e = checkMessage(i, buff, setUpLine, punchLine);
+				char *e = checkMessage(i + 1, buff, setUpLine, punchLine);
 				if (e != NULL) {
 					printf("error found by checkmsg\n");
 					write(connectionFileDesc, e, 4);
@@ -260,13 +266,14 @@ int readXBytes(int socketFileDesc, char *buff, int x) {
 			return 1;
 		}
 		if (c == '|') {
-			printf("Pipe hit. \n");
+			printf("Pipe hit.\n");
 			return 2;
 		}
 		printf("%c read in readXBytes \n", c);
 		buff[x - remaining] = c;
 		remaining -= 1;
 	}
+	printf("Returning in readXBytes\n");
 	return 0;
 }
 
