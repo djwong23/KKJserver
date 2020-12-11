@@ -9,6 +9,7 @@
 #define BACKLOG 5
 
 char *checkMessage(int stage, char *message, char *setUpLine, char *punchLine);
+char *findADSError(char *message);
 char *findError(int stage, char *message, char *expected, int expectedLen);
 int numDigits(int len);
 char *lengthAsString(int len);
@@ -132,7 +133,7 @@ int main(int argc, char **argv) {
 						printf("Message format broken; %c is not a digit.\n", buff[4 + k]);
 						char error[4];
 						error[0] = 'M';
-						error[1] = i + '0';
+						error[1] = i + '1';
 						error[2] = 'F';
 						error[3] = 'T';
 						write(connectionFileDesc, error, 4);
@@ -144,7 +145,7 @@ int main(int argc, char **argv) {
 							printf("Message format broken; no length specified.\n");
 							char error[4];
 							error[0] = 'M';
-							error[1] = i + '0';
+							error[1] = i + '1';
 							error[2] = 'F';
 							error[3] = 'T';
 							write(connectionFileDesc, error, 4);
@@ -179,7 +180,7 @@ int main(int argc, char **argv) {
 							printf("Message length invalid; pipe hit before specified length.\n");
 							char error[4];
 							error[0] = 'M';
-							error[1] = i + '0';
+							error[1] = i + '1';
 							error[2] = 'L';
 							error[3] = 'N';
 							write(connectionFileDesc, error, 4);
@@ -235,7 +236,7 @@ int main(int argc, char **argv) {
 				printf("Message format broken; %s is the buffer.\n", buff);
 				char error[4];
 				error[0] = 'M';
-				error[1] = i + '0';
+				error[1] = i + '1';
 				error[2] = 'F';
 				error[3] = 'T';
 				write(connectionFileDesc, error, 4);
@@ -247,6 +248,7 @@ int main(int argc, char **argv) {
 				char *e = checkMessage(i + 1, buff, setUpLine, punchLine);
 				if (e != NULL) {
 					printf("error found by checkmsg\n");
+					printf("stage: %d\n", i+1);
 					write(connectionFileDesc, e, 4);
 					break;
 				}
@@ -287,6 +289,9 @@ char *checkMessage(int stage, char *message, char *setUpLine, char *punchLine) {
 	char *expected;
 	char *temp;
 	int len;
+
+	if(stage == 5) return findADSError(message);
+
 	switch (stage) {
 		case 0:
 			len = 13;
@@ -297,6 +302,15 @@ char *checkMessage(int stage, char *message, char *setUpLine, char *punchLine) {
 			expected = "REG|12|Who's there?|";
 			break;
 		case 2:
+			len = strlen(setUpLine);
+			expected = malloc((3 + 3 + numDigits(len) + len) * sizeof(char));
+			strcat(expected, "REG|");
+			strcat(expected, lengthAsString(len));
+			strcat(expected, "|");
+			strcat(expected, setUpLine);
+			strcat(expected, "|");
+			break;
+		case 3:
 			len = strlen(setUpLine) + 6 - 1;
 			temp = malloc(strlen(setUpLine) * sizeof(char));
 			strcpy(temp, setUpLine);
@@ -310,15 +324,6 @@ char *checkMessage(int stage, char *message, char *setUpLine, char *punchLine) {
 			strcat(expected, "|\0");
 			printf("seting expected to %s\n", expected);
 			free(temp);
-			break;
-		case 3:
-			len = strlen(setUpLine);
-			expected = malloc((3 + 3 + numDigits(len) + len) * sizeof(char));
-			strcat(expected, "REG|");
-			strcat(expected, lengthAsString(len));
-			strcat(expected, "|");
-			strcat(expected, setUpLine);
-			strcat(expected, "|");
 			break;
 		case 4:
 			len = strlen(punchLine);
@@ -338,10 +343,24 @@ char *checkMessage(int stage, char *message, char *setUpLine, char *punchLine) {
 	return NULL;
 }
 
+char *findADSError(char *message){
+	int len = strlen(message);
+	if(len < 4) return "M5FT\n";
+	if(message[0] != 'R' || message[1] != 'E' || message[2] != 'G' || message[3] != '|') return "MSFT\n";
+
+	if(message[len-1] != '|') return "M5FT\n";
+
+	if(message[len-2] != '.' && message[len-2] != '?' && message[len-2] != '!') return "M5CT\n";
+
+	return NULL;
+}
+
+
 
 char *findError(int stage, char *message, char *expected, int expectedLen) {
 	printf("%s %s\n", expected, message);
 	printf("%d\n", expectedLen);
+
 	char *err = malloc(5 * sizeof(char));
 	err[0] = 'M';
 	err[1] = stage + 48;
@@ -350,6 +369,9 @@ char *findError(int stage, char *message, char *expected, int expectedLen) {
 
 	if (message[0] != expected[0] || message[1] != expected[1] || message[2] != expected[2] || message[3] != '|')
 		return strcat(err, "FT");
+
+	int mlen = strlen(message);
+	if(message[mlen-1] != '|') return strcat(err, "FT");
 
 	int lenJoke = 0;
 
