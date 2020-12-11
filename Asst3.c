@@ -14,6 +14,8 @@ char *findError(int stage, char *message, char *expected, int expectedLen);
 int numDigits(int len);
 char *lengthAsString(int len);
 int readXBytes(int socketFileDesc, char *buff, int x);
+
+
 int main(int argc, char **argv) {
 	if (argc != 2) {
 		printf("Usage: %s [port]\n", argv[0]);
@@ -26,10 +28,14 @@ int main(int argc, char **argv) {
 	socketFileDesc = 0;
 	socklen_t addrlen = 0;
 	struct sockaddr *socketAddress = NULL;
+
+	//JOKE INFO
 	char setUpLine[] = "Boo.";
 	char setUpLineFormat[] = "REG|4|Boo.|";
 	char punchLine[] = "Do not cry.";
 	char punchLineFormat[] = "REG|11|Do not cry.|";
+
+	//CREATE SOCKET
 	memset(&hint, 0, sizeof(struct addrinfo));
 	hint.ai_family = AF_UNSPEC;
 	hint.ai_socktype = SOCK_STREAM;
@@ -126,29 +132,44 @@ int main(int argc, char **argv) {
 						finished = 1;
 						break;
 					}
-					printf("Read in %c\n", buff[4 + k]);
 					if (!isdigit(buff[4 + k]) && buff[4 + k] != '|') {
 						buff[4 + k + 1] = '\0';
-						printf("%s is the buff\n", buff);
-						printf("Message format broken; %c is not a digit.\n", buff[4 + k]);
-						char error[4];
-						error[0] = 'M';
-						error[1] = i + '1';
-						error[2] = 'F';
-						error[3] = 'T';
-						write(connectionFileDesc, error, 4);
+						// char error[4];
+						// error[0] = 'M';
+						// error[1] = i + '1';
+						// error[2] = 'F';
+						// error[3] = 'T';
+
+
+						char* err = malloc(10*sizeof(char));
+						err[0]='\0';
+						strcat(err, "ERR|");
+						err[4] = 'M';
+						err[5] = i + '1';
+						err[6] = '\0';
+						strcat(err, "FT|");
+						write(connectionFileDesc, err, 10);
 						finished = 1;
 						break;
 					}
 					if (buff[4 + k] == '|') {
 						if (k == 0) {
-							printf("Message format broken; no length specified.\n");
-							char error[4];
-							error[0] = 'M';
-							error[1] = i + '1';
-							error[2] = 'F';
-							error[3] = 'T';
-							write(connectionFileDesc, error, 4);
+							// char error[4];
+							// error[0] = 'M';
+							// error[1] = i + '1';
+							// error[2] = 'F';
+							// error[3] = 'T';
+							// write(connectionFileDesc, error, 4);
+
+							char* err = malloc(10*sizeof(char));
+							err[0]='\0';
+							strcat(err, "ERR|");
+							err[4] = 'M';
+							err[5] = i + '1';
+							err[6] = '\0';
+							strcat(err, "FT|");
+							write(connectionFileDesc, err, 10);
+							free(err);							
 							finished = 1;
 							break;
 						}
@@ -161,7 +182,6 @@ int main(int argc, char **argv) {
 						length[k] = '\0';
 						int intLength;
 						intLength = (int) strtol(length, NULL, 10);
-						printf("THE LENGTH IS %d\n", intLength);
 						if (4 + k + intLength >= size) {
 							size *= 2;
 							buff = realloc(buff, size);
@@ -177,14 +197,22 @@ int main(int argc, char **argv) {
 							finished = 1;
 							break;
 						} else if (ret == 2) {
-							printf("Message length invalid; pipe hit before specified length.\n");
-							char error[4];
-							error[0] = 'M';
-							error[1] = i + '1';
-							error[2] = 'L';
-							error[3] = 'N';
-							write(connectionFileDesc, error, 4);
+							// char error[4];
+							// error[0] = 'M';
+							// error[1] = i + '1';
+							// error[2] = 'L';
+							// error[3] = 'N';
+
+							char* err = malloc(10*sizeof(char));
+							err[0]='\0';
+							strcat(err, "ERR|");
+							err[4] = 'M';
+							err[5] = i + '1';
+							err[6] = '\0';
+							strcat(err, "LN|");
+							write(connectionFileDesc, err, 10);
 							finished = 1;
+							free(err);
 							break;
 						}
 						//must read 1 more char for the pipe
@@ -193,7 +221,6 @@ int main(int argc, char **argv) {
 							finished = 1;
 							break;
 						}
-						printf("Read in %.*s as a string\n", intLength + 1, &buff[4 + k + 1]);
 						buff[4 + k + 1 + intLength + 2] = '\0';
 						free(length);
 						break;
@@ -201,7 +228,6 @@ int main(int argc, char **argv) {
 					k += 1;
 				}
 			} else if (strcmp("ERR|", buff) == 0) {
-				printf("Danger!\n");
 				//need to read in all of the error message
 				char errorCode[6];
 				int ret = readXBytes(connectionFileDesc, errorCode, 4);
@@ -215,8 +241,8 @@ int main(int argc, char **argv) {
 				//code is 4 characters and terminated, should be either unrecognized or valid
 				else {
 					errorCode[5] = '\0';
-					printf("Found code!\n");
-					char twoChars[2];
+					char twoChars[3];
+					twoChars[2]='\0';
 					memcpy(twoChars, &errorCode[2], 2 * (sizeof(char)));
 					if (errorCode[4] != '|') {
 						printf("Malformed error code; no pipe terminator. \n");
@@ -233,23 +259,33 @@ int main(int argc, char **argv) {
 				finished = 1;
 
 			} else {
-				printf("Message format broken; %s is the buffer.\n", buff);
-				char error[4];
-				error[0] = 'M';
-				error[1] = i + '1';
-				error[2] = 'F';
-				error[3] = 'T';
-				write(connectionFileDesc, error, 4);
+				// char error[10];
+				// error[0] = 'E';
+				// error[1] = 'R';
+				// error[2] = 'R';
+				// error[3] = '|';
+				// error[4] = 'M';
+				// error[5] = i + '1';
+				// error[6] = 'F';
+				// error[7] = 'T';
+				// error[8] = '|';
+
+				char* err = malloc(10*sizeof(char));
+				err[0]='\0';
+				strcat(err, "ERR|");
+				err[4] = 'M';
+				err[5] = i + '1';
+				err[6] = '\0';
+				strcat(err, "FT|");
+				write(connectionFileDesc, err, 10);
+				free(err);
 				break;
 			}
 
 			if (!finished) {
-				printf("Input %s\n", buff);
-				char *e = checkMessage(i + 1, buff, setUpLine, punchLine);
+				char *e = checkMessage(i + 1, buff, setUpLine, punchLine);			//if message if readable so far, it compares message to expectation
 				if (e != NULL) {
-					printf("error found by checkmsg\n");
-					printf("stage: %d\n", i+1);
-					write(connectionFileDesc, e, 4);
+					write(connectionFileDesc, e, 10);
 					break;
 				}
 			}
@@ -266,32 +302,29 @@ int readXBytes(int socketFileDesc, char *buff, int x) {
 		char c = '\0';
 		int nRead = read(socketFileDesc, &c, 1);
 		if (nRead == 0) {
-			printf("EOF reached\n");
 			return 1;
 		}
 		if (c == '|') {
 			printf("Pipe hit.\n");
 			return 2;
 		}
-		printf("%c read in readXBytes \n", c);
 		buff[x - remaining] = c;
 		remaining -= 1;
 	}
-	printf("Returning in readXBytes\n");
 	return 0;
 }
 
 //accepts stage of the joke and the input from client
-//returns "0" on success, error message on failure
-
+//returns NULL on success, error message on failure
 char *checkMessage(int stage, char *message, char *setUpLine, char *punchLine) {
-	printf("Checking message %s at stage %d\n", message, stage);
 	char *expected;
 	char *temp;
 	int len;
 
+	//only need to check punctuation on ads
 	if(stage == 5) return findADSError(message);
 
+	//first create expected string
 	switch (stage) {
 		case 0:
 			len = 13;
@@ -303,7 +336,7 @@ char *checkMessage(int stage, char *message, char *setUpLine, char *punchLine) {
 			break;
 		case 2:
 			len = strlen(setUpLine);
-			expected = malloc((3 + 3 + numDigits(len) + len) * sizeof(char));
+			expected = malloc((3 + 4 + numDigits(len) + len) * sizeof(char));
 			strcat(expected, "REG|");
 			strcat(expected, lengthAsString(len));
 			strcat(expected, "|");
@@ -312,22 +345,22 @@ char *checkMessage(int stage, char *message, char *setUpLine, char *punchLine) {
 			break;
 		case 3:
 			len = strlen(setUpLine) + 6 - 1;
-			temp = malloc(strlen(setUpLine) * sizeof(char));
+			temp = malloc((strlen(setUpLine)+1) * sizeof(char));
 			strcpy(temp, setUpLine);
 			temp[strlen(setUpLine) - 1] = '\0';
-			expected = malloc((3 + 3 + numDigits(len) + len) * sizeof(char));
+			expected = malloc((3 + 4 + numDigits(len) + len) * sizeof(char));
+			expected[0] = '\0';
 			strcat(expected, "REG|");
 			strcat(expected, lengthAsString(len));
 			strcat(expected, "|");
 			strcat(expected, temp);
 			strcat(expected, ", who?");
 			strcat(expected, "|\0");
-			printf("seting expected to %s\n", expected);
 			free(temp);
 			break;
 		case 4:
 			len = strlen(punchLine);
-			expected = malloc((3 + 3 + numDigits(len) + len) * sizeof(char));
+			expected = malloc((3 + 4 + numDigits(len) + len) * sizeof(char));
 			strcat(expected, "REG|");
 			strcat(expected, lengthAsString(len));
 			strcat(expected, "|");
@@ -345,33 +378,30 @@ char *checkMessage(int stage, char *message, char *setUpLine, char *punchLine) {
 
 char *findADSError(char *message){
 	int len = strlen(message);
-	if(len < 4) return "M5FT\n";
-	if(message[0] != 'R' || message[1] != 'E' || message[2] != 'G' || message[3] != '|') return "MSFT\n";
+	if(len < 4) return "ERR|M5FT|";
+	if(message[0] != 'R' || message[1] != 'E' || message[2] != 'G' || message[3] != '|') return "ERR|MSFT|";
 
-	if(message[len-1] != '|') return "M5FT\n";
+	if(message[len-1] != '|') return "ERR|M5FT|";
 
-	if(message[len-2] != '.' && message[len-2] != '?' && message[len-2] != '!') return "M5CT\n";
+	if(message[len-2] != '.' && message[len-2] != '?' && message[len-2] != '!') return "ERR|M5CT|";
 
 	return NULL;
 }
 
-
-
 char *findError(int stage, char *message, char *expected, int expectedLen) {
-	printf("%s %s\n", expected, message);
-	printf("%d\n", expectedLen);
-
-	char *err = malloc(5 * sizeof(char));
-	err[0] = 'M';
-	err[1] = stage + 48;
-	err[2] = '\0';
+	char *err = malloc(10 * sizeof(char));
+	err[0]='\0';
+	strcat(err, "ERR|");
+	err[4] = 'M';
+	err[5] = stage + 48;
+	err[6] = '\0';
 
 
 	if (message[0] != expected[0] || message[1] != expected[1] || message[2] != expected[2] || message[3] != '|')
-		return strcat(err, "FT");
+		return strcat(err, "FT|");
 
 	int mlen = strlen(message);
-	if(message[mlen-1] != '|') return strcat(err, "FT");
+	if(message[mlen-1] != '|') return strcat(err, "FT|");
 
 	int lenJoke = 0;
 
@@ -382,51 +412,36 @@ char *findError(int stage, char *message, char *expected, int expectedLen) {
 			lenJoke = lenJoke * 10 + (message[i] - 48);
 		} else if (message[i] == '|') {
 			if (lenJoke == 0)
-				return strcat(err, "FT");
+				return strcat(err, "FT|");
 			else
 				break;
 		} else {
-			return strcat(err, "FT");
+			return strcat(err, "FT|");
 		}
 		i++;
 	}
 
 	if (lenJoke != expectedLen) {
-		return strcat(err, "LN");
+		return strcat(err, "LN|");
 	}
 
 	int start = i + 1;
 
 	for (i = start; i < start + lenJoke; i++) {
-		if (message[i] == '|') return strcat(err, "FT");
-		if (message[i] != expected[i]) return strcat(err, "CT");
+		if (message[i] == '|') return strcat(err, "FT|");
+		if (message[i] != expected[i]) return strcat(err, "CT|");
 	}
 
-	if (message[i] != '|') return strcat(err, "FT");
+	if (message[i] != '|') return strcat(err, "FT|");
 
-	return strcat(err, "FT");
+	return strcat(err, "FT|");
 }
-
-
-// char* findError(int stage, char* message, char* expected){
-
-//first check first three characters - must be REG
-//then check that there is a |
-//then get length - must equal expected
-//then check that there is a |
-//then read the content string
-//if its length is not equal to read length - problem
-//if its content not equal to expected - error
-//must have
-
-
-// }
-
 
 char *lengthAsString(int len) {
 	int digits = numDigits(len);
-	char *res = malloc(digits * sizeof(char));
+	char *res = malloc((digits+1) * sizeof(char));
 	sprintf(res, "%d", len);
+	res[digits] = '\0';
 	return res;
 }
 
