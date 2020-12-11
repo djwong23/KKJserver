@@ -127,7 +127,6 @@ int main(int argc, char **argv) {
 				case 2: {
 					char message[500];
 					strcpy(message, "REG|");
-					printf("joke setup is %s\n", jokes[currJoke].setUpLine);
 					sprintf(&message[4], "%lu|", strlen(jokes[currJoke].setUpLine));
 					strcat(message, jokes[currJoke].setUpLine);
 					strcat(message, "|");
@@ -137,7 +136,6 @@ int main(int argc, char **argv) {
 				case 4: {
 					char message[500];
 					strcpy(message, "REG|");
-					printf("joke punch is %s\n", jokes[currJoke].punchLine);
 					sprintf(&message[4], "%lu|", strlen(jokes[currJoke].punchLine));
 					strcat(message, jokes[currJoke].punchLine);
 					strcat(message, "|");
@@ -331,7 +329,7 @@ int main(int argc, char **argv) {
 			}
 
 			if (!finished) {
-				printf("Input %s\n", buff);
+				//printf("Input %s\n", buff);
 				char *e = checkMessage(i + 1, buff, jokes[currJoke].setUpLine, jokes[currJoke].punchLine);//if message if readable so far, it compares message to expectation
 				if (e != NULL) {
 					write(connectionFileDesc, e, 10);
@@ -342,7 +340,7 @@ int main(int argc, char **argv) {
 
 		close(connectionFileDesc);
 		free(buff);
-		(currJoke == lastJoke) ? currJoke = 0 : currJoke++;
+		currJoke = rand() % (lastJoke);
 	}
 }
 
@@ -355,7 +353,7 @@ int readXBytes(int socketFileDesc, char *buff, int x) {
 			return 1;
 		}
 		if (c == '|') {
-			printf("Pipe hit.\n");
+			//printf("Pipe hit.\n");
 			return 2;
 		}
 		buff[x - remaining] = c;
