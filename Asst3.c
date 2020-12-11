@@ -4,8 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
-#include <unistd.h>
 #include <time.h>
+#include <unistd.h>
 #define BACKLOG 5
 
 char *checkMessage(int stage, char *message, char *setUpLine, char *punchLine);
@@ -37,7 +37,7 @@ int main(int argc, char **argv) {
 	while (reachedEOF != 1) {
 		for (int i = 0; i < 3; i++) {
 			bzero(readBuffer, 500);
-			if(fgets(readBuffer, 500, jokeFile) == NULL) {
+			if (fgets(readBuffer, 500, jokeFile) == NULL) {
 				reachedEOF = 1;
 				break;
 			}
@@ -46,16 +46,14 @@ int main(int argc, char **argv) {
 				jokes = realloc(jokes, maxJokes);
 			}
 			if (i == 0) {
-				jokes[currJoke].setUpLine =  malloc((strlen(readBuffer)) * sizeof(char));
-				readBuffer[strlen(readBuffer)-1] = '\0';
+				jokes[currJoke].setUpLine = malloc((strlen(readBuffer)) * sizeof(char));
+				readBuffer[strlen(readBuffer) - 1] = '\0';
 				strcpy(jokes[currJoke].setUpLine, readBuffer);
-			}
-			else if (i == 1) {
-				jokes[currJoke].punchLine = malloc((strlen(readBuffer))*sizeof (char));
-				readBuffer[strlen(readBuffer)-1] = '\0';
+			} else if (i == 1) {
+				jokes[currJoke].punchLine = malloc((strlen(readBuffer)) * sizeof(char));
+				readBuffer[strlen(readBuffer) - 1] = '\0';
 				strcpy(jokes[currJoke].punchLine, readBuffer);
-			}
-			else if (i == 2) {
+			} else if (i == 2) {
 				continue;
 			}
 		}
@@ -187,8 +185,8 @@ int main(int argc, char **argv) {
 						// error[3] = 'T';
 
 
-						char* err = malloc(10*sizeof(char));
-						err[0]='\0';
+						char *err = malloc(10 * sizeof(char));
+						err[0] = '\0';
 						strcat(err, "ERR|");
 						err[4] = 'M';
 						err[5] = i + '1';
@@ -207,8 +205,8 @@ int main(int argc, char **argv) {
 							// error[3] = 'T';
 							// write(connectionFileDesc, error, 4);
 
-							char* err = malloc(10*sizeof(char));
-							err[0]='\0';
+							char *err = malloc(10 * sizeof(char));
+							err[0] = '\0';
 							strcat(err, "ERR|");
 							err[4] = 'M';
 							err[5] = i + '1';
@@ -249,8 +247,8 @@ int main(int argc, char **argv) {
 							// error[2] = 'L';
 							// error[3] = 'N';
 
-							char* err = malloc(10*sizeof(char));
-							err[0]='\0';
+							char *err = malloc(10 * sizeof(char));
+							err[0] = '\0';
 							strcat(err, "ERR|");
 							err[4] = 'M';
 							err[5] = i + '1';
@@ -288,7 +286,7 @@ int main(int argc, char **argv) {
 				else {
 					errorCode[5] = '\0';
 					char twoChars[3];
-					twoChars[2]='\0';
+					twoChars[2] = '\0';
 					memcpy(twoChars, &errorCode[2], 2 * (sizeof(char)));
 					if (errorCode[4] != '|') {
 						printf("Malformed error code; no pipe terminator. \n");
@@ -316,8 +314,8 @@ int main(int argc, char **argv) {
 				// error[7] = 'T';
 				// error[8] = '|';
 
-				char* err = malloc(10*sizeof(char));
-				err[0]='\0';
+				char *err = malloc(10 * sizeof(char));
+				err[0] = '\0';
 				strcat(err, "ERR|");
 				err[4] = 'M';
 				err[5] = i + '1';
@@ -370,7 +368,7 @@ char *checkMessage(int stage, char *message, char *setUpLine, char *punchLine) {
 	int len;
 
 	//only need to check punctuation on ads
-	if(stage == 5) return findADSError(message);
+	if (stage == 5) return findADSError(message);
 
 	//first create expected string
 	switch (stage) {
@@ -393,7 +391,7 @@ char *checkMessage(int stage, char *message, char *setUpLine, char *punchLine) {
 			break;
 		case 3:
 			len = strlen(setUpLine) + 6 - 1;
-			temp = malloc((strlen(setUpLine)+1) * sizeof(char));
+			temp = malloc((strlen(setUpLine) + 1) * sizeof(char));
 			strcpy(temp, setUpLine);
 			temp[strlen(setUpLine) - 1] = '\0';
 			expected = malloc((3 + 4 + numDigits(len) + len) * sizeof(char));
@@ -424,21 +422,21 @@ char *checkMessage(int stage, char *message, char *setUpLine, char *punchLine) {
 	return NULL;
 }
 
-char *findADSError(char *message){
+char *findADSError(char *message) {
 	int len = strlen(message);
-	if(len < 4) return "ERR|M5FT|";
-	if(message[0] != 'R' || message[1] != 'E' || message[2] != 'G' || message[3] != '|') return "ERR|MSFT|";
+	if (len < 4) return "ERR|M5FT|";
+	if (message[0] != 'R' || message[1] != 'E' || message[2] != 'G' || message[3] != '|') return "ERR|MSFT|";
 
-	if(message[len-1] != '|') return "ERR|M5FT|";
+	if (message[len - 1] != '|') return "ERR|M5FT|";
 
-	if(message[len-2] != '.' && message[len-2] != '?' && message[len-2] != '!') return "ERR|M5CT|";
+	if (message[len - 2] != '.' && message[len - 2] != '?' && message[len - 2] != '!') return "ERR|M5CT|";
 
 	return NULL;
 }
 
 char *findError(int stage, char *message, char *expected, int expectedLen) {
 	char *err = malloc(10 * sizeof(char));
-	err[0]='\0';
+	err[0] = '\0';
 	strcat(err, "ERR|");
 	err[4] = 'M';
 	err[5] = stage + 48;
@@ -449,7 +447,7 @@ char *findError(int stage, char *message, char *expected, int expectedLen) {
 		return strcat(err, "FT|");
 
 	int mlen = strlen(message);
-	if(message[mlen-1] != '|') return strcat(err, "FT|");
+	if (message[mlen - 1] != '|') return strcat(err, "FT|");
 
 	int lenJoke = 0;
 
@@ -487,7 +485,7 @@ char *findError(int stage, char *message, char *expected, int expectedLen) {
 
 char *lengthAsString(int len) {
 	int digits = numDigits(len);
-	char *res = malloc((digits+1) * sizeof(char));
+	char *res = malloc((digits + 1) * sizeof(char));
 	sprintf(res, "%d", len);
 	res[digits] = '\0';
 	return res;
