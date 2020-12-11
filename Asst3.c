@@ -134,23 +134,42 @@ int main(int argc, char **argv) {
 					}
 					if (!isdigit(buff[4 + k]) && buff[4 + k] != '|') {
 						buff[4 + k + 1] = '\0';
-						char error[4];
-						error[0] = 'M';
-						error[1] = i + '1';
-						error[2] = 'F';
-						error[3] = 'T';
-						write(connectionFileDesc, error, 4);
+						// char error[4];
+						// error[0] = 'M';
+						// error[1] = i + '1';
+						// error[2] = 'F';
+						// error[3] = 'T';
+
+
+						char* err = malloc(10*sizeof(char));
+						err[0]='\0';
+						strcat(err, "ERR|");
+						err[4] = 'M';
+						err[5] = i + '1';
+						err[6] = '\0';
+						strcat(err, "FT|");
+						write(connectionFileDesc, err, 10);
 						finished = 1;
 						break;
 					}
 					if (buff[4 + k] == '|') {
 						if (k == 0) {
-							char error[4];
-							error[0] = 'M';
-							error[1] = i + '1';
-							error[2] = 'F';
-							error[3] = 'T';
-							write(connectionFileDesc, error, 4);
+							// char error[4];
+							// error[0] = 'M';
+							// error[1] = i + '1';
+							// error[2] = 'F';
+							// error[3] = 'T';
+							// write(connectionFileDesc, error, 4);
+
+							char* err = malloc(10*sizeof(char));
+							err[0]='\0';
+							strcat(err, "ERR|");
+							err[4] = 'M';
+							err[5] = i + '1';
+							err[6] = '\0';
+							strcat(err, "FT|");
+							write(connectionFileDesc, err, 10);
+							free(err);							
 							finished = 1;
 							break;
 						}
@@ -178,13 +197,22 @@ int main(int argc, char **argv) {
 							finished = 1;
 							break;
 						} else if (ret == 2) {
-							char error[4];
-							error[0] = 'M';
-							error[1] = i + '1';
-							error[2] = 'L';
-							error[3] = 'N';
-							write(connectionFileDesc, error, 4);
+							// char error[4];
+							// error[0] = 'M';
+							// error[1] = i + '1';
+							// error[2] = 'L';
+							// error[3] = 'N';
+
+							char* err = malloc(10*sizeof(char));
+							err[0]='\0';
+							strcat(err, "ERR|");
+							err[4] = 'M';
+							err[5] = i + '1';
+							err[6] = '\0';
+							strcat(err, "LN|");
+							write(connectionFileDesc, err, 10);
 							finished = 1;
+							free(err);
 							break;
 						}
 						//must read 1 more char for the pipe
@@ -231,19 +259,33 @@ int main(int argc, char **argv) {
 				finished = 1;
 
 			} else {
-				char error[4];
-				error[0] = 'M';
-				error[1] = i + '1';
-				error[2] = 'F';
-				error[3] = 'T';
-				write(connectionFileDesc, error, 4);
+				// char error[10];
+				// error[0] = 'E';
+				// error[1] = 'R';
+				// error[2] = 'R';
+				// error[3] = '|';
+				// error[4] = 'M';
+				// error[5] = i + '1';
+				// error[6] = 'F';
+				// error[7] = 'T';
+				// error[8] = '|';
+
+				char* err = malloc(10*sizeof(char));
+				err[0]='\0';
+				strcat(err, "ERR|");
+				err[4] = 'M';
+				err[5] = i + '1';
+				err[6] = '\0';
+				strcat(err, "FT|");
+				write(connectionFileDesc, err, 10);
+				free(err);
 				break;
 			}
 
 			if (!finished) {
-				char *e = checkMessage(i + 1, buff, setUpLine, punchLine);
+				char *e = checkMessage(i + 1, buff, setUpLine, punchLine);			//if message if readable so far, it compares message to expectation
 				if (e != NULL) {
-					write(connectionFileDesc, e, 4);
+					write(connectionFileDesc, e, 10);
 					break;
 				}
 			}
@@ -273,15 +315,16 @@ int readXBytes(int socketFileDesc, char *buff, int x) {
 }
 
 //accepts stage of the joke and the input from client
-//returns "0" on success, error message on failure
-
+//returns NULL on success, error message on failure
 char *checkMessage(int stage, char *message, char *setUpLine, char *punchLine) {
 	char *expected;
 	char *temp;
 	int len;
 
+	//only need to check punctuation on ads
 	if(stage == 5) return findADSError(message);
 
+	//first create expected string
 	switch (stage) {
 		case 0:
 			len = 13;
@@ -306,7 +349,6 @@ char *checkMessage(int stage, char *message, char *setUpLine, char *punchLine) {
 			strcpy(temp, setUpLine);
 			temp[strlen(setUpLine) - 1] = '\0';
 			expected = malloc((3 + 4 + numDigits(len) + len) * sizeof(char));
-			// expected = malloc(50 * sizeof(char));
 			expected[0] = '\0';
 			strcat(expected, "REG|");
 			strcat(expected, lengthAsString(len));
@@ -336,33 +378,30 @@ char *checkMessage(int stage, char *message, char *setUpLine, char *punchLine) {
 
 char *findADSError(char *message){
 	int len = strlen(message);
-	if(len < 4) return "M5FT\n";
-	if(message[0] != 'R' || message[1] != 'E' || message[2] != 'G' || message[3] != '|') return "MSFT\n";
+	if(len < 4) return "ERR|M5FT|";
+	if(message[0] != 'R' || message[1] != 'E' || message[2] != 'G' || message[3] != '|') return "ERR|MSFT|";
 
-	if(message[len-1] != '|') return "M5FT\n";
+	if(message[len-1] != '|') return "ERR|M5FT|";
 
-	if(message[len-2] != '.' && message[len-2] != '?' && message[len-2] != '!') return "M5CT\n";
+	if(message[len-2] != '.' && message[len-2] != '?' && message[len-2] != '!') return "ERR|M5CT|";
 
 	return NULL;
 }
 
-
-
 char *findError(int stage, char *message, char *expected, int expectedLen) {
-	printf("%s %s\n", expected, message);
-	printf("%d\n", expectedLen);
-
-	char *err = malloc(5 * sizeof(char));
-	err[0] = 'M';
-	err[1] = stage + 48;
-	err[2] = '\0';
+	char *err = malloc(10 * sizeof(char));
+	err[0]='\0';
+	strcat(err, "ERR|");
+	err[4] = 'M';
+	err[5] = stage + 48;
+	err[6] = '\0';
 
 
 	if (message[0] != expected[0] || message[1] != expected[1] || message[2] != expected[2] || message[3] != '|')
-		return strcat(err, "FT");
+		return strcat(err, "FT|");
 
 	int mlen = strlen(message);
-	if(message[mlen-1] != '|') return strcat(err, "FT");
+	if(message[mlen-1] != '|') return strcat(err, "FT|");
 
 	int lenJoke = 0;
 
@@ -373,29 +412,29 @@ char *findError(int stage, char *message, char *expected, int expectedLen) {
 			lenJoke = lenJoke * 10 + (message[i] - 48);
 		} else if (message[i] == '|') {
 			if (lenJoke == 0)
-				return strcat(err, "FT");
+				return strcat(err, "FT|");
 			else
 				break;
 		} else {
-			return strcat(err, "FT");
+			return strcat(err, "FT|");
 		}
 		i++;
 	}
 
 	if (lenJoke != expectedLen) {
-		return strcat(err, "LN");
+		return strcat(err, "LN|");
 	}
 
 	int start = i + 1;
 
 	for (i = start; i < start + lenJoke; i++) {
-		if (message[i] == '|') return strcat(err, "FT");
-		if (message[i] != expected[i]) return strcat(err, "CT");
+		if (message[i] == '|') return strcat(err, "FT|");
+		if (message[i] != expected[i]) return strcat(err, "CT|");
 	}
 
-	if (message[i] != '|') return strcat(err, "FT");
+	if (message[i] != '|') return strcat(err, "FT|");
 
-	return strcat(err, "FT");
+	return strcat(err, "FT|");
 }
 
 char *lengthAsString(int len) {
