@@ -1,7 +1,7 @@
 Who.
 I didn't know you were an owl!
 
-Djikstra.
+Dijkstra.
 That path was taking too long, so I let myself in.
 
 Leaf.
