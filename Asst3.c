@@ -5,7 +5,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
-
+#include <time.h>
 #define BACKLOG 5
 
 char *checkMessage(int stage, char *message, char *setUpLine, char *punchLine);
@@ -14,13 +14,57 @@ char *findError(int stage, char *message, char *expected, int expectedLen);
 int numDigits(int len);
 char *lengthAsString(int len);
 int readXBytes(int socketFileDesc, char *buff, int x);
-
-
+struct jokeLines {
+	char *setUpLine;
+	char *punchLine;
+};
+typedef struct jokeLines joke;
 int main(int argc, char **argv) {
-	if (argc != 2) {
-		printf("Usage: %s [port]\n", argv[0]);
+	if (argc != 3) {
+		printf("Usage: %s [port] [filepath]\n", argv[0]);
 		exit(EXIT_FAILURE);
 	}
+	FILE *jokeFile = fopen(argv[2], "r");
+	if (jokeFile == NULL) {
+		printf("Error opening file %s, closing\n", argv[2]);
+	}
+	srand(time(0));
+	int maxJokes = 10;
+	joke *jokes = malloc(sizeof(joke) * maxJokes);
+	int currJoke = 0;
+	char *readBuffer = malloc(500);
+	int reachedEOF = 0;
+	while (reachedEOF != 1) {
+		for (int i = 0; i < 3; i++) {
+			bzero(readBuffer, 500);
+			if(fgets(readBuffer, 500, jokeFile) == NULL) {
+				reachedEOF = 1;
+				break;
+			}
+			if (currJoke == maxJokes) {
+				maxJokes *= 2;
+				jokes = realloc(jokes, maxJokes);
+			}
+			if (i == 0) {
+				jokes[currJoke].setUpLine =  malloc((strlen(readBuffer)) * sizeof(char));
+				readBuffer[strlen(readBuffer)-1] = '\0';
+				strcpy(jokes[currJoke].setUpLine, readBuffer);
+			}
+			else if (i == 1) {
+				jokes[currJoke].punchLine = malloc((strlen(readBuffer))*sizeof (char));
+				readBuffer[strlen(readBuffer)-1] = '\0';
+				strcpy(jokes[currJoke].punchLine, readBuffer);
+			}
+			else if (i == 2) {
+				continue;
+			}
+		}
+		currJoke++;
+	}
+	int lastJoke = currJoke;
+	currJoke = rand() % (lastJoke);
+
+
 	//socket setup; socket contained in socketFileDesc
 	char *port = argv[1];
 	struct addrinfo hint, *address_list, *addr;
@@ -28,14 +72,6 @@ int main(int argc, char **argv) {
 	socketFileDesc = 0;
 	socklen_t addrlen = 0;
 	struct sockaddr *socketAddress = NULL;
-
-	//JOKE INFO
-	char setUpLine[] = "Boo.";
-	char setUpLineFormat[] = "REG|4|Boo.|";
-	char punchLine[] = "Do not cry.";
-	char punchLineFormat[] = "REG|11|Do not cry.|";
-
-	//CREATE SOCKET
 	memset(&hint, 0, sizeof(struct addrinfo));
 	hint.ai_family = AF_UNSPEC;
 	hint.ai_socktype = SOCK_STREAM;
@@ -89,11 +125,23 @@ int main(int argc, char **argv) {
 					break;
 				}
 				case 2: {
-					write(connectionFileDesc, setUpLineFormat, strlen(setUpLineFormat));
+					char message[500];
+					strcpy(message, "REG|");
+					printf("joke setup is %s\n", jokes[currJoke].setUpLine);
+					sprintf(&message[4], "%lu|", strlen(jokes[currJoke].setUpLine));
+					strcat(message, jokes[currJoke].setUpLine);
+					strcat(message, "|");
+					write(connectionFileDesc, message, strlen(message));
 					break;
 				}
 				case 4: {
-					write(connectionFileDesc, punchLineFormat, strlen(punchLineFormat));
+					char message[500];
+					strcpy(message, "REG|");
+					printf("joke punch is %s\n", jokes[currJoke].punchLine);
+					sprintf(&message[4], "%lu|", strlen(jokes[currJoke].punchLine));
+					strcat(message, jokes[currJoke].punchLine);
+					strcat(message, "|");
+					write(connectionFileDesc, message, strlen(message));
 					break;
 				}
 				case 6: {
@@ -169,7 +217,7 @@ int main(int argc, char **argv) {
 							err[6] = '\0';
 							strcat(err, "FT|");
 							write(connectionFileDesc, err, 10);
-							free(err);							
+							free(err);
 							finished = 1;
 							break;
 						}
@@ -283,7 +331,8 @@ int main(int argc, char **argv) {
 			}
 
 			if (!finished) {
-				char *e = checkMessage(i + 1, buff, setUpLine, punchLine);			//if message if readable so far, it compares message to expectation
+				printf("Input %s\n", buff);
+				char *e = checkMessage(i + 1, buff, jokes[currJoke].setUpLine, jokes[currJoke].punchLine);//if message if readable so far, it compares message to expectation
 				if (e != NULL) {
 					write(connectionFileDesc, e, 10);
 					break;
@@ -293,6 +342,7 @@ int main(int argc, char **argv) {
 
 		close(connectionFileDesc);
 		free(buff);
+		(currJoke == lastJoke) ? currJoke = 0 : currJoke++;
 	}
 }
 
